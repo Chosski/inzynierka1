@@ -10,12 +10,11 @@ const app = express();
 const PORT = 3000;
 
 const dbConfig = {
-  host: process.env.MYSQLHOST,
-  port: process.env.MYSQLPORT,
-  username: process.env.MYSQLUSER,
-  password: process.env.MYSQLPASSWORD,
-  database: process.env.MYSQLDATABSE,
-  dialect: "mysql",
+  host: "autorack.proxy.rlwy.net",
+  port: 39483,
+  username: "root"  ,
+  password: "BYDMXGiBuIgLljyJJTTDwYAPKipYMXYI",
+  database: "myapp",
 };
 
 const logger = winston.createLogger({
