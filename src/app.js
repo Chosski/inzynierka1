@@ -9,13 +9,13 @@ const dotenv = require('dotenv').config();
 const app = express();
 const PORT = 3000;
 
-const dbConfig = {
-  host: "autorack.proxy.rlwy.net",
-  port: 39483,
-  username: "root"  ,
-  password: "BYDMXGiBuIgLljyJJTTDwYAPKipYMXYI",
-  database: "myapp",
-};
+const connection = await mysql.createConnection({
+  host: process.env.MYSQLHOST,
+  port: process.env.MYSQLPORT,
+  user: process.env.MYSQLUSER,         // Poprawiona zmienna
+  password: process.env.MYSQLPASSWORD,
+  database: process.env.MYSQLDATABASE, // Poprawiona zmienna
+});
 
 const logger = winston.createLogger({
   level: 'info',
