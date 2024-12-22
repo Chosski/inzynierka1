@@ -5,22 +5,32 @@ const bcrypt = require('bcrypt');
 const fs = require('fs');
 const winston = require('winston');
 const dotenv = require('dotenv').config();
+const url = require('url');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Konfiguracja puli połączeń
+// Pobranie URL połączenia z bazy danych z zmiennych środowiskowych
+const dbUrl = process.env.DATABASE_URL;
+
+// Parsowanie URL połączenia
+const parsedDbUrl = url.parse(dbUrl);
+const [username, password] = parsedDbUrl.auth.split(':');
+const dbName = parsedDbUrl.pathname.slice(1); // Usunięcie pierwszego znaku '/' z nazwy bazy danych
+
+// Konfiguracja puli połączeń z użyciem rozdzielonych komponentów
 const pool = mysql.createPool({
-  host: process.env.MYSQLHOST,
-  port: process.env.MYSQLPORT,
-  user: process.env.MYSQLUSERNAME,
-  password: process.env.MYSQLPASSWORD,
-  database: process.env.MYSQLDATABASE,
+  host: parsedDbUrl.hostname,
+  port: parsedDbUrl.port,
+  user: username,
+  password: password,
+  database: dbName,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
 });
 
+// Konfiguracja loggera
 const logger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(
@@ -117,6 +127,7 @@ app.listen(PORT, async () => {
     process.exit(1); // Zakończenie procesu, jeśli nie ma połączenia z bazą danych
   }
 });
+
 
 // Użytkownicy
 app.get('/api/users', async (req, res) => {
