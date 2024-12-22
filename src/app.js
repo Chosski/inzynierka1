@@ -7,14 +7,18 @@ const winston = require('winston');
 const dotenv = require('dotenv').config();
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
-const connection = await mysql.createConnection({
+// Konfiguracja puli połączeń
+const pool = mysql.createPool({
   host: process.env.MYSQLHOST,
   port: process.env.MYSQLPORT,
-  user: process.env.MYSQLUSER,         // Poprawiona zmienna
+  user: process.env.MYSQLUSER,
   password: process.env.MYSQLPASSWORD,
-  database: process.env.MYSQLDATABASE, // Poprawiona zmienna
+  database: process.env.MYSQLDATABASE,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
 });
 
 const logger = winston.createLogger({
@@ -25,6 +29,7 @@ const logger = winston.createLogger({
   ),
   transports: [
     new winston.transports.File({ filename: path.join(__dirname, 'logs', 'system.log') }),
+    new winston.transports.Console() // Dodanie konsoli do logów podczas debugowania
   ],
 });
 
@@ -55,8 +60,7 @@ app.use((req, res, next) => {
 });
 
 async function getConnection() {
-  const connection = await mysql.createConnection(dbConfig);
-  return connection;
+  return pool.getConnection();
 }
 
 // Strona główna
@@ -67,8 +71,10 @@ app.get('/', (req, res) => {
 // Logowanie
 app.post('/api/login', async (req, res) => {
   const { login, password } = req.body;
+  let connection;
+
   try {
-    const connection = await getConnection();
+    connection = await getConnection();
     const [rows] = await connection.execute('SELECT * FROM users WHERE login = ?', [login]);
 
     if (rows.length > 0) {
@@ -90,10 +96,25 @@ app.post('/api/login', async (req, res) => {
       logger.warn(`Nieudana próba logowania - nieznany użytkownik ${login}.`);
       res.status(401).json({ message: 'Nieprawidłowy login lub hasło' });
     }
-    connection.end();
   } catch (error) {
     logger.error('Błąd logowania:', error);
     res.status(500).json({ message: 'Błąd serwera' });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// Uruchomienie serwera
+app.listen(PORT, async () => {
+  try {
+    const connection = await pool.getConnection();
+    connection.release();
+    console.log(`Serwer działa na porcie ${PORT}`);
+    logger.info(`Serwer uruchomiony na porcie ${PORT}`);
+  } catch (error) {
+    console.error('Nie udało się połączyć z bazą danych:', error);
+    logger.error('Nie udało się połączyć z bazą danych:', error);
+    process.exit(1); // Zakończenie procesu, jeśli nie ma połączenia z bazą danych
   }
 });
 
